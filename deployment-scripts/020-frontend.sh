@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -e
+
+# -------------------------------------------------------------------------
+# FIX: Automatically load config.sh from the script's own directory
+# -------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+  source "$SCRIPT_DIR/config.sh"
+  echo "✅ Loaded config.sh: RG=$RESOURCE_GROUP, Cluster=$CLUSTER_NAME"
+else
+  echo "❌ Error: config.sh not found in $SCRIPT_DIR"
+  exit 1
+fi
+# -------------------------------------------------------------------------
+
+# Step 2 - Deploying an application - create project, application, expose, display routes
+set -e -o pipefail
+
+MYDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $MYDIR/config.sh
+source $MYDIR/share.sh
+
+echo '#' Step 2 Deploying an application
+
+echo '#' create a new project
+frontend=patient-health-frontend
+ibmcloud target -r "$REGION" -g "$RESOURCE_GROUP"
+ibmcloud oc cluster config --cluster "$CLUSTER_NAME" --admin
+oc new-project $project
+
+echo '#' create a new application
+oc new-app --name=$frontend centos/nodejs-10-centos7~https://github.com/IBM-Cloud/$frontend --as-deployment-config
+
+echo '#' wait for application pods to be replicated
+wait_jq "oc get replicationcontroller --output json" \
+  '.items[]|select(.metadata.labels.app == "'$frontend'")|.status.readyReplicas == 1'\
+  300 5
+
+echo '#' expose frontend
+oc expose service $frontend
+oc get pods
+
+echo '#' display routes
+oc get routes
+HOST=$(frontend_url)
+echo open $HOST
+echo curl -s $HOST/info
