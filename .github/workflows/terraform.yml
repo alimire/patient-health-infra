@@ -1,0 +1,33 @@
+name: Terraform CI
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # We run validation inside the dev stack folder
+        working-directory: ./stacks/dev
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      env:
+        IBM_CLOUD_API_KEY: ${{ secrets.IBM_CLOUD_API_KEY }}
+      run: terraform init
+
+    - name: Terraform Plan
+      env:
+        IBM_CLOUD_API_KEY: ${{ secrets.IBM_CLOUD_API_KEY }}
+      run: terraform plan
