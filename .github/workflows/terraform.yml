@@ -24,10 +24,10 @@ jobs:
 
     - name: Terraform Init
       env:
-        IBM_CLOUD_API_KEY: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
       run: terraform init
 
     - name: Terraform Plan
       env:
-        IBM_CLOUD_API_KEY: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
       run: terraform plan
