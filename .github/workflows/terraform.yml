@@ -5,10 +5,21 @@ on:
     branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: 'Terraform Action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+        - plan
+        - apply
+        - destroy
 
 jobs:
-  validate:
-    name: Validate Terraform
+  terraform:
+    name: Terraform Workflow
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -25,9 +36,26 @@ jobs:
     - name: Terraform Init
       env:
         TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_resource_group_id: ${{ secrets.TF_VAR_RESOURCE_GROUP_ID }}
       run: terraform init
 
     - name: Terraform Plan
+      if: github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'plan')
       env:
         TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_resource_group_id: ${{ secrets.TF_VAR_RESOURCE_GROUP_ID }}
       run: terraform plan
+
+    - name: Terraform Apply
+      if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'apply')
+      env:
+        TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_resource_group_id: ${{ secrets.TF_VAR_RESOURCE_GROUP_ID }}
+      run: terraform apply -auto-approve
+
+    - name: Terraform Destroy
+      if: github.event_name == 'workflow_dispatch' && inputs.terraform_action == 'destroy'
+      env:
+        TF_VAR_ibmcloud_api_key: ${{ secrets.IBM_CLOUD_API_KEY }}
+        TF_VAR_resource_group_id: ${{ secrets.TF_VAR_RESOURCE_GROUP_ID }}
+      run: terraform destroy -auto-approve
